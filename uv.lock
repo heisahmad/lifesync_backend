@@ -894,6 +894,15 @@ wheels = [
 ]
 
 [[package]]
+name = "nulltype"
+version = "2.3.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2f/ce/92289851364b7f816a839c8064aac06c01f3a3ecf33ab04adf9d0a0ab66a/nulltype-2.3.1.zip", hash = "sha256:64aa3cb2ab5e904d1b37175b9b922bea268c13f9ce32e3d373313150ab5ef272", size = 20119 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/00/0f/47dde1a3cceac9858da0bfb92d2279bf5f993ed075b72983e92efc297db3/nulltype-2.3.1-py2.py3-none-any.whl", hash = "sha256:16ae565745118e37e0558441f5821c76351d8c3a789640b5bca277cf65b2271b", size = 11054 },
+]
+
+[[package]]
 name = "numpy"
 version = "2.2.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1013,6 +1022,17 @@ wheels = [
 bcrypt = [
     { name = "bcrypt" },
 ]
+
+[[package]]
+name = "plaid-python"
+version = "29.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "nulltype" },
+    { name = "python-dateutil" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6d/8b/c30befb11eb589c291aea4ef38ff059b8bd8c145447a6fa2f7a2449c03c2/plaid_python-29.1.0.tar.gz", hash = "sha256:c0362380783415b41836c6b768801b4a5dd3b597bd95b7bcb6d8b91d926ae157", size = 1026683 }
 
 [[package]]
 name = "pluggy"
@@ -1379,6 +1399,7 @@ dependencies = [
     { name = "numpy" },
     { name = "pandas" },
     { name = "passlib", extra = ["bcrypt"] },
+    { name = "plaid-python" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
@@ -1402,6 +1423,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.2.4" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7.4" },
+    { name = "plaid-python", specifier = ">=29.1.0" },
     { name = "pydantic", specifier = ">=2.11.3" },
     { name = "pydantic-settings", specifier = ">=2.8.1" },
     { name = "python-dotenv", specifier = ">=1.1.0" },

@@ -24,4 +24,5 @@ dependencies = [
     "uvicorn>=0.34.1",
     "email-validator>=2.2.0",
     "numpy>=2.2.4",
+    "plaid-python>=29.1.0",
 ]

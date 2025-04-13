@@ -1,94 +1,63 @@
-
-from datetime import datetime, timedelta
-from typing import List, Dict
+from typing import Dict, List
 import pandas as pd
+from app.services.gmail_service import GmailService
 
 class SocialConnectionService:
-    @staticmethod
-    async def analyze_communication_patterns(email_data: List[Dict], calendar_data: List[Dict]) -> Dict:
-        # Combine email and calendar interactions
-        all_interactions = []
-        
-        for email in email_data:
-            all_interactions.append({
-                'contact': email['from'],
-                'date': email['date'],
-                'type': 'email'
-            })
-            
-        for event in calendar_data:
-            for attendee in event['attendees']:
-                all_interactions.append({
-                    'contact': attendee['email'],
-                    'date': event['start_time'],
-                    'type': 'meeting'
-                })
-                
-        df = pd.DataFrame(all_interactions)
-        df['date'] = pd.to_datetime(df['date'])
-        
-        # Calculate interaction frequencies
-        contact_frequencies = df.groupby('contact').agg({
-            'date': 'count'
-        }).rename(columns={'date': 'interaction_count'})
-        
-        # Identify important contacts
-        important_contacts = contact_frequencies[
-            contact_frequencies['interaction_count'] > contact_frequencies['interaction_count'].mean()
-        ].index.tolist()
-        
+    def __init__(self, gmail_service: GmailService):
+        self.gmail_service = gmail_service
+
+    async def analyze_communication_patterns(self, timeframe: str = "week") -> Dict:
+        email_data = await self.gmail_service.get_email_metadata(timeframe)
+
+        df = pd.DataFrame(email_data)
+
+        contacts_analysis = self._analyze_contacts(df)
+        response_patterns = self._analyze_response_patterns(df)
+        network_strength = self._calculate_network_strength(df)
+
         return {
-            'important_contacts': important_contacts,
-            'contact_frequencies': contact_frequencies.to_dict()
+            "contacts_analysis": contacts_analysis,
+            "response_patterns": response_patterns,
+            "network_strength": network_strength,
+            "recommendations": self._generate_social_recommendations(
+                contacts_analysis,
+                response_patterns,
+                network_strength
+            )
         }
-        
-    @staticmethod
-    async def identify_important_dates(contacts: List[Dict]) -> List[Dict]:
-        important_dates = []
-        today = datetime.now()
-        
-        for contact in contacts:
-            if 'birthday' in contact:
-                birthday = datetime.strptime(contact['birthday'], '%Y-%m-%d')
-                next_birthday = birthday.replace(year=today.year)
-                
-                if next_birthday < today:
-                    next_birthday = next_birthday.replace(year=today.year + 1)
-                    
-                days_until = (next_birthday - today).days
-                
-                if days_until <= 30:
-                    important_dates.append({
-                        'contact': contact['name'],
-                        'event': 'birthday',
-                        'date': next_birthday.strftime('%Y-%m-%d'),
-                        'days_until': days_until
-                    })
-                    
-        return important_dates
-        
-    @staticmethod
-    async def evaluate_connection_strength(interaction_history: List[Dict]) -> Dict:
-        df = pd.DataFrame(interaction_history)
-        df['date'] = pd.to_datetime(df['date'])
-        
-        # Calculate recency, frequency, and engagement scores
-        now = datetime.now()
-        df['days_ago'] = (now - df['date']).dt.days
-        
-        connection_scores = {}
-        
-        for contact in df['contact'].unique():
-            contact_data = df[df['contact'] == contact]
-            
-            recency_score = 1 / (1 + contact_data['days_ago'].min())
-            frequency_score = len(contact_data) / len(df)
-            engagement_score = contact_data['duration'].mean() if 'duration' in contact_data else 0.5
-            
-            connection_scores[contact] = {
-                'overall_score': (recency_score + frequency_score + engagement_score) / 3,
-                'last_interaction': contact_data['date'].max().strftime('%Y-%m-%d'),
-                'total_interactions': len(contact_data)
-            }
-            
-        return connection_scores
+
+    def _analyze_contacts(self, df: pd.DataFrame) -> Dict:
+        frequent_contacts = df.groupby('from_email').size().sort_values(ascending=False)
+        return {
+            "most_frequent": frequent_contacts.head(5).to_dict(),
+            "total_unique_contacts": len(frequent_contacts)
+        }
+
+    def _analyze_response_patterns(self, df: pd.DataFrame) -> Dict:
+        df['response_time'] = pd.to_datetime(df['response_timestamp']) - pd.to_datetime(df['timestamp'])
+        return {
+            "average_response_time": df['response_time'].mean().total_seconds() / 3600,
+            "response_rate": len(df[df['responded']]) / len(df) * 100
+        }
+
+    def _calculate_network_strength(self, df: pd.DataFrame) -> Dict:
+        return {
+            "total_communications": len(df),
+            "two_way_connections": len(df[df['responded']].groupby('from_email').filter(lambda x: len(x) > 1))
+        }
+
+    def _generate_social_recommendations(
+        self,
+        contacts_analysis: Dict,
+        response_patterns: Dict,
+        network_strength: Dict
+    ) -> List[str]:
+        recommendations = []
+
+        if response_patterns["response_rate"] < 70:
+            recommendations.append("Consider improving email response rate")
+
+        if response_patterns["average_response_time"] > 24:
+            recommendations.append("Try to reduce average response time")
+
+        return recommendations
