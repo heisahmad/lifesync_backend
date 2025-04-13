@@ -30,6 +30,7 @@ app.include_router(health.router, prefix=settings.API_V1_STR + "/health", tags=[
 app.include_router(finance.router, prefix=settings.API_V1_STR + "/finance", tags=["finance"])
 app.include_router(notifications.router, prefix=settings.API_V1_STR + "/notifications", tags=["notifications"])
 app.include_router(calendar.router, prefix=settings.API_V1_STR + "/calendar", tags=["calendar"])
+app.include_router(analytics.router, prefix=settings.API_V1_STR + "/analytics", tags=["analytics"])
 
 if __name__ == "__main__":
     import uvicorn
