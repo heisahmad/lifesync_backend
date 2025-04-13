@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.endpoints import users, insights, sync, health, finance, notifications
+from app.api.v1.endpoints import users, insights, sync, health, finance, notifications, calendar
 from app.core.config import settings
 from app.db.base import engine, Base
 
@@ -29,6 +29,7 @@ app.include_router(sync.router, prefix=settings.API_V1_STR + "/sync", tags=["syn
 app.include_router(health.router, prefix=settings.API_V1_STR + "/health", tags=["health"])
 app.include_router(finance.router, prefix=settings.API_V1_STR + "/finance", tags=["finance"])
 app.include_router(notifications.router, prefix=settings.API_V1_STR + "/notifications", tags=["notifications"])
+app.include_router(calendar.router, prefix=settings.API_V1_STR + "/calendar", tags=["calendar"])
 
 if __name__ == "__main__":
     import uvicorn
