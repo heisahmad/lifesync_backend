@@ -1,29 +1,42 @@
-
-from typing import List, Dict
+from typing import Dict, List
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import IsolationForest
 
 class RecommendationService:
-    def __init__(self):
-        self.model = RandomForestClassifier()
-        
-    async def generate_rule_based_recommendations(self, user_data: Dict) -> List[str]:
+    @staticmethod
+    async def generate_rule_based_recommendations(data: Dict) -> List[str]:
         recommendations = []
-        
-        # Sleep recommendations
-        if user_data.get('sleep_hours', 0) < 7:
-            recommendations.append("Consider going to bed earlier to improve sleep quality")
-            
-        # Exercise recommendations
-        if user_data.get('daily_steps', 0) < 8000:
-            recommendations.append("Try to increase your daily step count")
-            
+
+        # Health recommendations
+        if data.get('health'):
+            if data['health'].get('sleep_duration', 0) < 7:
+                recommendations.append("Consider getting more sleep - aim for 7-9 hours")
+            if data['health'].get('activity_level', 0) < 5000:
+                recommendations.append("Try to increase your daily steps - aim for 10,000 steps")
+
         # Financial recommendations
-        if user_data.get('monthly_savings_rate', 0) < 0.2:
-            recommendations.append("Consider setting up automatic savings transfers")
-            
+        if data.get('finance'):
+            if data['finance'].get('total_spending', 0) > 1000:
+                recommendations.append("Consider reviewing your monthly budget")
+
+        # Social recommendations
+        if data.get('social'):
+            if data['social'].get('missed_calls', 0) > 3:
+                recommendations.append("You have several missed calls - consider following up")
+
         return recommendations
-        
+
+    @staticmethod
+    async def detect_patterns(data: pd.DataFrame) -> Dict:
+        # Use Isolation Forest for anomaly detection
+        iso_forest = IsolationForest(contamination=0.1, random_state=42)
+        predictions = iso_forest.fit_predict(data)
+
+        return {
+            "anomalies": (predictions == -1).sum(),
+            "normal_patterns": (predictions == 1).sum()
+        }
+    
     async def generate_ml_recommendations(self, historical_data: pd.DataFrame) -> List[str]:
         # Train model on historical patterns
         features = ['sleep_quality', 'activity_level', 'stress_level']

@@ -1,68 +1,41 @@
-
+from typing import Dict, Optional, List
 from datetime import datetime
-from typing import Optional, Dict
-from app.core.config import settings
-import httpx
 import redis
+from app.core.config import settings
 
 class NotificationService:
     def __init__(self):
         self.redis_client = redis.Redis.from_url(settings.REDIS_URL)
-        
-    async def create_notification(
-        self,
-        user_id: int,
-        notification_type: str,
-        message: str,
-        priority: str = "normal",
-        metadata: Optional[Dict] = None
-    ):
+
+    async def create_notification(self, user_id: int, notification_type: str, message: str, data: Optional[Dict] = None):
         notification = {
             "user_id": user_id,
             "type": notification_type,
             "message": message,
-            "priority": priority,
-            "metadata": metadata or {},
+            "data": data,
             "created_at": datetime.utcnow().isoformat(),
             "read": False
         }
-        
-        # Store in Redis for quick access
-        notification_key = f"notification:{user_id}:{datetime.utcnow().timestamp()}"
-        self.redis_client.hmset(notification_key, notification)
-        
-        # Set expiration for 30 days
-        self.redis_client.expire(notification_key, 60 * 60 * 24 * 30)
-        
-        # If high priority, send immediate push notification
-        if priority == "high":
-            await self._send_push_notification(user_id, message)
-            
-    async def get_user_notifications(
-        self,
-        user_id: int,
-        limit: int = 10,
-        offset: int = 0,
-        unread_only: bool = False
-    ) -> list:
-        pattern = f"notification:{user_id}:*"
+
+        # Store in Redis with TTL of 7 days
+        key = f"notification:{user_id}:{datetime.utcnow().timestamp()}"
+        self.redis_client.setex(key, 604800, str(notification))
+
+    async def get_user_notifications(self, user_id: int, unread_only: bool = False) -> List[Dict]:
         notifications = []
-        
+        pattern = f"notification:{user_id}:*"
+
         for key in self.redis_client.scan_iter(match=pattern):
-            notification = self.redis_client.hgetall(key)
-            if unread_only and notification.get("read", "false") == "true":
-                continue
-            notifications.append(notification)
-            
-        # Sort by created_at
-        notifications.sort(key=lambda x: x.get("created_at"), reverse=True)
-        return notifications[offset:offset + limit]
-        
-    async def mark_as_read(self, user_id: int, notification_ids: list):
+            notification = eval(self.redis_client.get(key))
+            if not unread_only or not notification["read"]:
+                notifications.append(notification)
+
+        return sorted(notifications, key=lambda x: x["created_at"], reverse=True)
+
+    async def mark_as_read(self, user_id: int, notification_ids: List[str]):
         for notification_id in notification_ids:
             key = f"notification:{user_id}:{notification_id}"
-            self.redis_client.hset(key, "read", "true")
-            
-    async def _send_push_notification(self, user_id: int, message: str):
-        # Implementation for push notification service (e.g., Firebase)
-        pass
+            if self.redis_client.exists(key):
+                notification = eval(self.redis_client.get(key))
+                notification["read"] = True
+                self.redis_client.setex(key, 604800, str(notification))
