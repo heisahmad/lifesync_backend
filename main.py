@@ -1,7 +1,6 @@
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.endpoints import users
+from app.api.v1.endpoints import users, insights, sync, health
 from app.core.config import settings
 from app.db.base import engine, Base
 
@@ -25,6 +24,9 @@ app.add_middleware(
 
 # Include routers
 app.include_router(users.router, prefix=settings.API_V1_STR + "/users", tags=["users"])
+app.include_router(insights.router, prefix=settings.API_V1_STR + "/insights", tags=["insights"])
+app.include_router(sync.router, prefix=settings.API_V1_STR + "/sync", tags=["sync"])
+app.include_router(health.router, prefix=settings.API_V1_STR + "/health", tags=["health"])
 
 if __name__ == "__main__":
     import uvicorn
