@@ -1,9 +1,18 @@
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
+from app.api.v1.endpoints import users
+from app.core.config import settings
+from app.db.base import engine, Base
 
-app = FastAPI(title="LifeSync API", version="1.0.0")
+# Create database tables
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    version="1.0.0",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+)
 
 # Configure CORS
 app.add_middleware(
@@ -14,9 +23,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-async def root():
-    return {"message": "Welcome to LifeSync API"}
+# Include routers
+app.include_router(users.router, prefix=settings.API_V1_STR + "/users", tags=["users"])
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=5000, reload=True)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=5000)
