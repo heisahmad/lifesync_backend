@@ -1,23 +1,31 @@
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, timedelta
-
+from pydantic import BaseModel  # Added import
 from app.api.deps import get_db, get_current_user
 from app.services.analytics_service import AnalyticsService
 from app.services.recommendation_service import RecommendationService
 from app.services.health_analysis_service import HealthAnalysisService
 from app.services.financial_service import FinancialService
 from app.services.social_connection_service import SocialConnectionService
+from typing import Any
+from app.models.user import User  # Added import
 
 router = APIRouter()
 
-@router.get("/daily")
+class DailyInsightsResponse(BaseModel):  # Added response model
+    date: str
+    health_insights: dict
+    financial_insights: dict
+    social_insights: dict
+    recommendations: dict
+
+@router.get("/daily", response_model=DailyInsightsResponse)  # Added response model
 async def get_daily_insights(
     date: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     date = date or datetime.now().strftime('%Y-%m-%d')
     
@@ -42,11 +50,11 @@ async def get_daily_insights(
         "recommendations": recommendations
     }
 
-@router.get("/weekly")
+@router.get("/weekly", response_model=None)
 async def get_weekly_insights(
     start_date: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: Any = Depends(get_current_user)
 ):
     if not start_date:
         start_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
@@ -65,12 +73,12 @@ async def get_weekly_insights(
         "correlations": correlations
     }
 
-@router.get("/monthly")
+@router.get("/monthly", response_model=None)
 async def get_monthly_insights(
     month: Optional[int] = None,
     year: Optional[int] = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: Any = Depends(get_current_user)
 ):
     if not month or not year:
         today = datetime.now()
@@ -90,13 +98,13 @@ async def get_monthly_insights(
         "predictions": predictions
     }
 
-@router.get("/custom")
+@router.get("/custom", response_model=None)
 async def get_custom_insights(
     start_date: str,
     end_date: str,
     metrics: Optional[List[str]] = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: Any = Depends(get_current_user)
 ):
     analytics_service = AnalyticsService()
     custom_analysis = await analytics_service.analyze_custom_period(

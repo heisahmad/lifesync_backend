@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_user
 from app.services.fitbit_service import FitbitService
 from app.services.health_analysis_service import HealthAnalysisService
+from app.models.integration import Integration  # Added import
+from app.models.user import User  # Added import
 from datetime import datetime, timedelta
 
 router = APIRouter()
@@ -13,7 +15,7 @@ async def get_health_analysis(
     start_date: str = None,
     end_date: str = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     # Get user's Fitbit integration
     integration = db.query(Integration).filter(

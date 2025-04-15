@@ -4,15 +4,21 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_user
 from app.services.data_integration_service import DataIntegrationService
 from app.services.analytics_service import AnalyticsService
+from app.services.health_service import HealthService  # Added import
+from app.services.finance_service import FinanceService  # Added import
+from app.models.user import User  # Added import
 
 router = APIRouter()
+
+health_service = HealthService()  # Added instance
+finance_service = FinanceService()  # Added instance
 
 @router.get("/insights")
 async def get_insights(
     start_date: str = None,
     end_date: str = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     # Get data from different services
     health_data = await health_service.get_health_data(current_user.id, start_date, end_date)

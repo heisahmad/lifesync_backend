@@ -1,10 +1,9 @@
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import Any
 from datetime import timedelta
-
+from pydantic import BaseModel  # Added import for BaseModel
 from app.core.auth import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from app.db.base import get_db
 from app.schemas.user import User, UserCreate, UserUpdate
@@ -14,11 +13,17 @@ from app.services.user_service import (
     get_user_by_email,
     update_user
 )
+from app.api.deps import get_current_user
+from app.models.user import User as UserModel
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-@router.post("/token")
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+@router.post("/token", response_model=Token)
 async def login(
     db: Session = Depends(get_db),
     form_data: OAuth2PasswordRequestForm = Depends()
@@ -54,18 +59,16 @@ def register_user(
 @router.get("/me", response_model=User)
 def read_user_me(
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user: UserModel = Depends(get_current_user)
 ) -> Any:
-    user = get_current_user(db, token)
-    return user
+    return current_user
 
 @router.put("/me", response_model=User)
 def update_user_me(
     *,
     db: Session = Depends(get_db),
     user_in: UserUpdate,
-    token: str = Depends(oauth2_scheme)
+    current_user: UserModel = Depends(get_current_user)
 ) -> Any:
-    current_user = get_current_user(db, token)
     user = update_user(db, current_user, user_in)
     return user

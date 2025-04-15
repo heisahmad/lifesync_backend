@@ -4,6 +4,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_user
 from app.services.google_calendar_service import GoogleCalendarService
 from app.services.schedule_optimizer import ScheduleOptimizer
+from app.services.fitbit_service import FitbitService  # Added import
+from app.models.integration import Integration  # Added import
+from app.models.user import User  # Added import
 from datetime import datetime, timedelta
 
 router = APIRouter()
@@ -13,7 +16,7 @@ async def get_calendar_events(
     start_date: str = None,
     end_date: str = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     integration = db.query(Integration).filter(
         Integration.user_id == current_user.id,
@@ -38,7 +41,7 @@ async def optimize_schedule(
     start_date: str = None,
     end_date: str = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     google_integration = db.query(Integration).filter(
         Integration.user_id == current_user.id,
