@@ -1,54 +1,53 @@
-
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from typing import List, Dict
 import pandas as pd
+from datetime import datetime
 
 class GmailService:
     def __init__(self, credentials_dict: Dict):
         credentials = Credentials.from_authorized_user_info(credentials_dict)
         self.service = build('gmail', 'v1', credentials=credentials)
+
+    async def get_emails(self, max_results: int = 100, label_ids: List[str] = None) -> List[Dict]:
+        query = {'userId': 'me', 'maxResults': max_results}
+        if label_ids:
+            query['labelIds'] = label_ids
         
-    async def get_email_metadata(self, max_results: int = 100) -> List[Dict]:
-        results = self.service.users().messages().list(
-            userId='me',
-            maxResults=max_results
-        ).execute()
-        
+        results = self.service.users().messages().list(**query).execute()
         messages = []
+        
         for msg in results.get('messages', []):
             message = self.service.users().messages().get(
                 userId='me',
                 id=msg['id'],
-                format='metadata'
+                format='full'
             ).execute()
             messages.append(message)
             
         return messages
+
+    async def create_label(self, name: str) -> Dict:
+        label_object = {'name': name, 'messageListVisibility': 'show'}
+        return self.service.users().labels().create(userId='me', body=label_object).execute()
+
+    async def apply_label(self, message_id: str, label_ids: List[str]) -> Dict:
+        return self.service.users().messages().modify(
+            userId='me',
+            id=message_id,
+            body={'addLabelIds': label_ids}
+        ).execute()
+
+    async def send_email(self, to: str, subject: str, body: str) -> Dict:
+        message = self._create_message(to, subject, body)
+        return self.service.users().messages().send(userId='me', body=message).execute()
+
+    def _create_message(self, to: str, subject: str, body: str) -> Dict:
+        from email.mime.text import MIMEText
+        import base64
         
-    async def analyze_communication_patterns(self, messages: List[Dict]) -> Dict:
-        df = pd.DataFrame(messages)
-        
-        analysis = {
-            "total_emails": len(messages),
-            "emails_per_day": len(messages) / 30,  # Assuming 30-day period
-            "top_senders": df.groupby('from').count().nlargest(5).to_dict(),
-            "busiest_hours": df.groupby('timestamp').count().nlargest(5).to_dict()
-        }
-        
-        return analysis
-        
-    async def identify_action_items(self, messages: List[Dict]) -> List[Dict]:
-        action_items = []
-        
-        for message in messages:
-            # Simple keyword-based action item detection
-            keywords = ['todo', 'action item', 'please handle', 'deadline']
-            if any(keyword in message.get('snippet', '').lower() for keyword in keywords):
-                action_items.append({
-                    "message_id": message['id'],
-                    "snippet": message.get('snippet'),
-                    "date": message.get('internalDate')
-                })
-                
-        return action_items
+        message = MIMEText(body)
+        message['to'] = to
+        message['subject'] = subject
+        raw = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
+        return {'raw': raw}

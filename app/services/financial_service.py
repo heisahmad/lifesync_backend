@@ -1,55 +1,49 @@
-
 from plaid.api import plaid_api
-from plaid.configuration import Configuration
-from plaid.api_client import ApiClient
-from app.core.config import settings
+from plaid.model.transactions_get_request import TransactionsGetRequest
+from plaid.model.accounts_get_request import AccountsGetRequest
+from datetime import datetime, timedelta
 from typing import Dict, List
 import pandas as pd
 
 class FinancialService:
     def __init__(self, access_token: str):
-        configuration = Configuration(
-            host=settings.PLAID_URL,
-            api_key={
-                'clientId': settings.PLAID_CLIENT_ID,
-                'secret': settings.PLAID_CLIENT_SECRET
-            }
-        )
-        api_client = ApiClient(configuration)
-        self.client = plaid_api.PlaidApi(api_client)
+        self.client = plaid_api.PlaidApi(plaid.Client(
+            client_id=settings.PLAID_CLIENT_ID,
+            secret=settings.PLAID_SECRET,
+            environment=settings.PLAID_ENV
+        ))
         self.access_token = access_token
-        
+
+    async def get_accounts(self) -> List[Dict]:
+        request = AccountsGetRequest(access_token=self.access_token)
+        response = self.client.accounts_get(request)
+        return response['accounts']
+
     async def get_transactions(self, start_date: str, end_date: str) -> List[Dict]:
-        try:
-            response = self.client.transactions_get(
-                access_token=self.access_token,
-                start_date=start_date,
-                end_date=end_date
-            )
-            return response.transactions
-        except Exception as e:
-            raise Exception(f"Error fetching transactions: {str(e)}")
-        
+        request = TransactionsGetRequest(
+            access_token=self.access_token,
+            start_date=datetime.strptime(start_date, '%Y-%m-%d').date(),
+            end_date=datetime.strptime(end_date, '%Y-%m-%d').date()
+        )
+        response = self.client.transactions_get(request)
+        return response['transactions']
+
     async def analyze_spending(self, transactions: List[Dict]) -> Dict:
         df = pd.DataFrame(transactions)
-        
-        analysis = {
+        return {
             "total_spending": df['amount'].sum(),
-            "spending_by_category": df.groupby('category').sum()['amount'].to_dict(),
-            "largest_transaction": df.nlargest(1, 'amount').to_dict('records')[0],
-            "average_transaction": df['amount'].mean()
+            "by_category": df.groupby('category').sum()['amount'].to_dict(),
+            "by_account": df.groupby('account_id').sum()['amount'].to_dict(),
+            "recent_large_transactions": df.nlargest(5, 'amount').to_dict('records')
         }
+
+    async def sync_transactions(self, start_date: str, end_date: str) -> Dict:
+        accounts = await self.get_accounts()
+        transactions = await self.get_transactions(start_date, end_date)
+        analysis = await self.analyze_spending(transactions)
         
-        return analysis
-        
-    async def generate_financial_recommendations(self, spending_analysis: Dict) -> List[str]:
-        recommendations = []
-        
-        if spending_analysis["average_transaction"] > 100:
-            recommendations.append("Consider setting a per-transaction spending limit")
-            
-        for category, amount in spending_analysis["spending_by_category"].items():
-            if amount > 1000:
-                recommendations.append(f"High spending detected in {category}. Consider reviewing expenses.")
-                
-        return recommendations
+        return {
+            "accounts": accounts,
+            "transactions": transactions,
+            "analysis": analysis
+        }
