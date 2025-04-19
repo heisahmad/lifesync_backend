@@ -12,7 +12,7 @@ class ARLocation(Base):
     altitude = Column(Float)
     name = Column(String)
     description = Column(String)
-    metadata = Column(JSON)
+    meta_data = Column(JSON)
     tags = Column(JSON)
     
     user = relationship("User", back_populates="ar_locations")
@@ -28,7 +28,7 @@ class ARObject(Base):
     scale = Column(JSON)  # x, y, z
     rotation = Column(JSON)  # x, y, z
     position = Column(JSON)  # x, y, z
-    metadata = Column(JSON)
+    meta_data = Column(JSON)
     tags = Column(JSON)
     
     location = relationship("ARLocation", back_populates="objects")
